@@ -3441,7 +3441,7 @@ void LocalFrame::CalculateStyle(Node *node) {
     StyleResolverState state(node->GetDocument(), *element, ComputedStyle::Create().get(), ComputedStyle::Create().get());
     state.SetStyle(ComputedStyle::Create());
     for (const Attribute& attribute : element->Attributes()) {
-      if (attribute.GetName().LocalName().StartsWith("domguard-style-")) {
+      if (attribute.GetName().LocalName().StartsWith("dtt-style-")) {
         bool is_escaped_character = false;
         StringBuilder unescaped_current_part_builder;
         AtomicString current_value = attribute.Value();
@@ -3495,8 +3495,8 @@ void LocalFrame::SetDOMConstraintHTML(const WTF::String& dom_constraint_html) {
       NodeVector dangling_elements;
       for (auto *child = body_element->firstChild(); child; child = child->nextSibling()) {
         Element *element = DynamicTo<Element>(child);
-        if (element && element->hasAttribute("domguard-dangling")) {
-          element->removeAttribute("domguard-dangling");
+        if (element && element->hasAttribute("dtt-dangling")) {
+          element->removeAttribute("dtt-dangling");
           dangling_elements.push_back(element);
         }
       }
