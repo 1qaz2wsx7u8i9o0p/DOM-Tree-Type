@@ -190,7 +190,7 @@ bool DOMGuard::attributeEquals(Element *element, const AtomicString& attribute_n
       if (shadow_attribute_value[i] == '\\') {
         is_escaped_character = true;
       } else if (shadow_attribute_value[i] == '|') {
-        if (attribute_name == "dtt-id" || attribute_name == "id") {
+        if (attribute_name == "domguard-id" || attribute_name == "id") {
           if (idEquals(unescaped_current_part_builder.ToAtomicString(), attribute_value, dom_constraint_mode)) {
             found_in_shadow_attribute_value = true;
             break;
@@ -212,7 +212,7 @@ bool DOMGuard::attributeEquals(Element *element, const AtomicString& attribute_n
       }
     }
   }
-  if (attribute_name == "dtt-id" || attribute_name == "id") {
+  if (attribute_name == "domguard-id" || attribute_name == "id") {
     return found_in_shadow_attribute_value || idEquals(unescaped_current_part_builder.ToAtomicString(), attribute_value, dom_constraint_mode);
   } else if (isScriptAttribute(element, attribute_name)) {
     return found_in_shadow_attribute_value || scriptEquals(unescaped_current_part_builder.ToString(), attribute_value);
@@ -272,7 +272,11 @@ void DOMGuard::cssValueEquals(const CSSProperty& property, const CSSValue* shado
       if (urlEquals(KURL(shadow_css_image_value->Url()), KURL(actual_css_image_value->Url()))) {
         match_state = -1;
       }
-    } 
+    } else if (shadow_css_value->IsColorValue()) {
+      if (actual_css_value->IsColorValue()) {
+        match_state = -1;
+      }
+    }
   }
 }
 
@@ -335,7 +339,7 @@ bool DOMGuard::propertyEquals(Element *element, const CSSProperty& property, con
 bool DOMGuard::isEqualInShadowTree(Element* shadow, Element* actual) {
   if (shadow->tagName() != actual->tagName()) {
     return false;
-  } else if (!attributeEquals(actual, "dtt-id", shadow->getAttribute("dtt-id"), actual->GetIdAttribute())) {
+  } else if (!attributeEquals(actual, "domguard-id", shadow->getAttribute("domguard-id"), actual->GetIdAttribute())) {
     return false;
   }
   return true;
@@ -371,7 +375,7 @@ void DOMGuard::createShadowNode(Document* dom_constraint, Element* shadow_ptr, N
     shadow_element = dom_constraint->CreateRawElement(QualifiedName(g_null_atom, AtomicString(element->tagName()), g_null_atom));
     for (const Attribute& attribute : element->Attributes()) {
       if (attribute.GetName().LocalName() == "id") {
-        shadow_element->setAttribute("dtt-id", attribute.Value());
+        shadow_element->setAttribute("domguard-id", attribute.Value());
       }
       if (shouldMonitorAttribute(element, attribute.GetName())) {
         shadow_element->setAttribute(attribute.GetName(), attribute.Value());
@@ -379,7 +383,7 @@ void DOMGuard::createShadowNode(Document* dom_constraint, Element* shadow_ptr, N
     }
 
     if (shadow_ptr->tagName() == "HTML" && element->tagName() != "HEAD" && element->tagName() != "BODY") {
-      shadow_element->setAttribute("dtt-dangling", "");
+      shadow_element->setAttribute("domguard-dangling", "");
     }
     
     shadow_ptr->appendChild(shadow_element);
@@ -437,7 +441,7 @@ Node* DOMGuard::locateNodeInShadowTree(Node* node, ShadowTreeMatchResult& result
 
     if (found_child) {
       shadow_ptr = found_child;
-      if (found_child->getAttribute("dtt-flatten") != g_null_atom) {
+      if (found_child->getAttribute("domguard-whitelist") != g_null_atom) {
         result = ShadowTreeMatchResult::WhitelistMatch;
         return shadow_ptr;
       }
@@ -517,14 +521,14 @@ Node* DOMGuard::locateNodeAndCreateAncestorsInShadowTree(Node* node, ShadowTreeM
     auto *ancestor_element = DynamicTo<Element>((*ancestor).Get());
     DCHECK(ancestor_element); // A non-Element and non-DocumentFragment ancestor would trigger this DCHECK
     Element *shadow_element = dom_constraint->CreateRawElement(QualifiedName(g_null_atom, AtomicString(ancestor_element->tagName()), g_null_atom));
-    shadow_element->setAttribute("dtt-id", ancestor_element->GetIdAttribute());
+    shadow_element->setAttribute("domguard-id", ancestor_element->GetIdAttribute());
     // Should we also clone other attributes here, similar to createShadowNode?
     // The shadow_element created here is not a shadow of any node being inserted, 
     // rather, it is something already in the DOM tree but previously unknown to us.
     // Therefore, we should not clone them.
 
     if (shadow_ptr_is_html && shadow_element->tagName() != "HEAD" && shadow_element->tagName() != "BODY") {
-      shadow_element->setAttribute("dtt-dangling", "");
+      shadow_element->setAttribute("domguard-dangling", "");
     }
     shadow_ptr = shadow_ptr->appendChild(shadow_element);
   }
@@ -533,8 +537,8 @@ Node* DOMGuard::locateNodeAndCreateAncestorsInShadowTree(Node* node, ShadowTreeM
 }
 
 bool DOMGuard::shouldMonitorAttribute(const Element* element, const QualifiedName& attribute_name) {
-  if (attribute_name.LocalName().StartsWith("dtt-")) {
-    // "dtt-*" attributes are for internal use only, and should not be merged or shadowed like regular attributes.
+  if (attribute_name.LocalName().StartsWith("domguard-")) {
+    // "domguard-*" attributes are for internal use only, and should not be merged or shadowed like regular attributes.
     return false;
   } else if (attribute_name.LocalName() == "id") {
     // This changes an element's identifier.
@@ -704,7 +708,7 @@ bool DOMGuard::matchesPropertyWhitelistInShadowTree(Element *element, Element *s
       const CSSValue* new_value = css_property_values_[count];
 
       if (slow_path) {
-        AtomicString shadow_attribute_name = "dtt-style-" + property_class.GetPropertyNameString();
+        AtomicString shadow_attribute_name = "domguard-style-" + property_class.GetPropertyNameString();
         if (propertyEquals(element, property_class, child_element->getAttribute(shadow_attribute_name), new_value, element->GetDocument().ElementSheet().Contents()->ParserContext())) {
           is_css_property_modified_[count] = false;
           modified_property_count_ -= 1;
@@ -748,7 +752,7 @@ Node* DOMGuard::matchingNode(Node *node, Node *shadow_node) {
     return nullptr;
   }
 
-  if (!attributeEquals(element, "dtt-id", shadow_element->getAttribute("dtt-id"), element->GetIdAttribute())) {
+  if (!attributeEquals(element, "domguard-id", shadow_element->getAttribute("domguard-id"), element->GetIdAttribute())) {
     return nullptr;
   }
 
@@ -906,7 +910,7 @@ void DOMGuard::WillRemoveDOMNodeExtended(Node* node, bool &allowed) {
   }
 }
 
-void DOMGuard::collectStyleChanges(Element *element, const ComputedStyle* current_style, const ComputedStyle* new_style, bool ignore_numeric_value = true) {
+void DOMGuard::collectStyleChanges(Element *element, const ComputedStyle* current_style, const ComputedStyle* new_style, bool is_whitelist_match = true) {
   int count = -1;
   modified_property_count_ = 0;
   for (CSSPropertyID property_id : css_property_ids_) {
@@ -914,10 +918,7 @@ void DOMGuard::collectStyleChanges(Element *element, const ComputedStyle* curren
     is_css_property_modified_[count] = false;
     const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
     const CSSValue* new_css_value = ComputedStyleUtils::ComputedPropertyValue(property, *new_style);
-    if (ignore_numeric_value) {
-      if (new_css_value && (new_css_value->IsNumericLiteralValue() || new_css_value->IsColorValue())) {
-        continue;
-      }
+    if (is_whitelist_match) {
       css_property_values_[count] = const_cast<CSSValue *>(new_css_value);
     }
 
@@ -972,7 +973,7 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
     for (CSSPropertyID property_id : css_property_ids_) {
       if (is_css_property_modified_[count]) {
         const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
-        AtomicString shadow_attribute_name = "dtt-style-" + property.GetPropertyNameString();
+        AtomicString shadow_attribute_name = "domguard-style-" + property.GetPropertyNameString();
         const CSSValue* new_css_value = ComputedStyleUtils::ComputedPropertyValue(property, *style);
         shadow_ptr->setAttribute(shadow_attribute_name, mergeShadowProperty(shadow_ptr, property, shadow_ptr->getAttribute(shadow_attribute_name), new_css_value, element->GetDocument().ElementSheet().Contents()->ParserContext()));
       }
@@ -995,9 +996,6 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
         count += 1;
         const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
         const CSSValue* new_value = ComputedStyleUtils::ComputedPropertyValue(property, *style);
-        if (new_value && (new_value->IsNumericLiteralValue() || new_value->IsColorValue())) {
-          continue;
-        }
         String new_css_text = new_value ? new_value->CssText() : "";
         if (!current_style) {
           if (new_css_text == "") {
@@ -1030,7 +1028,7 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
             continue;
           }
         }
-        AtomicString shadow_attribute_name = "dtt-style-" + property.GetPropertyNameString();
+        AtomicString shadow_attribute_name = "domguard-style-" + property.GetPropertyNameString();
         allowed &= propertyEquals(element, property, shadow_ptr->getAttribute(shadow_attribute_name), new_value, element->GetDocument().ElementSheet().Contents()->ParserContext());
         if (!allowed) {
           LOG(INFO) << "SetStyle rejected, match_result = " << match_result << ", property = " << property.GetPropertyNameString().Utf8() << ", value = " << (new_value ? new_value->CssText().Utf8() : "") << ", allowed_values = " << shadow_ptr->getAttribute(shadow_attribute_name).Utf8();
@@ -1050,7 +1048,7 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
         for (CSSPropertyID property_id : css_property_ids_) {
           if (is_css_property_modified_[count]) {
             const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
-            AtomicString shadow_attribute_name = "dtt-style-" + property.GetPropertyNameString();
+            AtomicString shadow_attribute_name = "domguard-style-" + property.GetPropertyNameString();
             const CSSValue* new_value = ComputedStyleUtils::ComputedPropertyValue(property, *style);
             LOG(INFO) << "SetStyle rejected, match_result = " << match_result << ", property = " << property.GetPropertyNameString().Utf8() << ", value = " << (new_value ? new_value->CssText().Utf8() : "");
           }
