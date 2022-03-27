@@ -141,7 +141,17 @@ bool DOMGuard::urlEquals(const Vector<KURL>& url_constraints, const KURL& new_ur
   // Here we infer a SOP constraint from a list of KURLs (i.e. url_constraints).
 
   for (Vector<KURL>::const_iterator it = url_constraints.begin(); it != url_constraints.end(); ++it) {
-    if (new_url.Protocol() == it->Protocol() && stringEquals(DecodeURLEscapeSequences(it->Host(), url::DecodeURLMode::kUTF8), 0, DecodeURLEscapeSequences(new_url.Host(), url::DecodeURLMode::kUTF8), 0) && new_url.Port() == it->Port()) {
+    if (new_url.Protocol() != it->Protocol()) {
+      continue;
+    }
+    if (new_url.ProtocolIsJavaScript()) {
+      url::Component new_url_content = new_url.GetParsed().GetContent();
+      url::Component it_content = it->GetParsed().GetContent();
+
+      if (scriptEquals(DecodeURLEscapeSequences(it->GetString().Substring(it_content.begin, it_content.len), url::DecodeURLMode::kUTF8), DecodeURLEscapeSequences(new_url.GetString().Substring(new_url_content.begin, new_url_content.len), url::DecodeURLMode::kUTF8))) {
+        return true;
+      }
+    } else if (new_url.Port() == it->Port() && stringEquals(DecodeURLEscapeSequences(it->Host(), url::DecodeURLMode::kUTF8), 0, DecodeURLEscapeSequences(new_url.Host(), url::DecodeURLMode::kUTF8), 0)) {
       return true;
     }
   }
@@ -547,6 +557,8 @@ bool DOMGuard::shouldMonitorAttribute(const Element* element, const QualifiedNam
   } else if (attribute_name.LocalName() == "id") {
     // This changes an element's identifier.
     return true;
+  } else if (attribute_name.LocalName() == "name") {
+    return true;
   } else if (element->ExpectedTrustedTypeForAttribute(attribute_name) != SpecificTrustedType::kNone) {
     return true;
   } else {
@@ -557,6 +569,8 @@ bool DOMGuard::shouldMonitorAttribute(const Element* element, const QualifiedNam
       return true;
     } else if (element->IsSVGAnimationAttributeSettingJavaScriptURL(attribute)) {
       return true;
+    } else if (element->tagName() == "FORM") {
+      return attribute_name.LocalName() == "target" || attribute_name.LocalName() == "method";
     }
   }
   return false;
@@ -954,7 +968,6 @@ void DOMGuard::collectStyleChanges(Element *element, const ComputedStyle* curren
 
 void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& allowed) {
   allowed = true;
-
   if (!element->GetDocument().domWindow()) { // Moving an element into a DOMWindow always triggers WillSetStyle
     return;
   }
@@ -993,11 +1006,9 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
 
     if (match_result == ShadowTreeMatchResult::RootIsNotDocument) {
       allowed = true;
-    } else if (match_result == ShadowTreeMatchResult::Found) {    
+    } else if (match_result == ShadowTreeMatchResult::Found) {
       const ComputedStyle* current_style = element->GetComputedStyle();
-      int count = -1;
       for (CSSPropertyID property_id : css_property_ids_) {
-        count += 1;
         const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
         const CSSValue* new_value = ComputedStyleUtils::ComputedPropertyValue(property, *style);
         String new_css_text = new_value ? new_value->CssText() : "";
@@ -1074,7 +1085,7 @@ void DOMGuard::FrameAttachedToParent(LocalFrame* frame) {
   is_css_property_modified_.clear();
   for (CSSPropertyID property_id : CSSPropertyIDList()) {
     const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
-    if (property.IsWebExposed(frame->DomWindow()) && !property.IsShorthand() && property.IsProperty() && !property.IsLayoutDependentProperty() && !property.IsInternal()) {
+    if (property.IsWebExposed(frame->DomWindow()) && !property.IsShorthand() && property.IsProperty() && !property.IsLayoutDependentProperty() && !property.IsInternal() && !property.IsSurrogate()) {
       css_property_ids_.push_back(property_id);
       is_css_property_modified_.push_back(false);
       css_property_values_.push_back(nullptr);
