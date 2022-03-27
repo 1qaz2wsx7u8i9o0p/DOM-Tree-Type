@@ -442,7 +442,11 @@ Node* DOMGuard::locateNodeInShadowTree(Node* node, ShadowTreeMatchResult& result
     if (found_child) {
       shadow_ptr = found_child;
       if (found_child->getAttribute("dtt-whitelist") != g_null_atom) {
-        result = ShadowTreeMatchResult::WhitelistMatch;
+        if (ancestor + 1 != ancestors.rend()) {
+          result = ShadowTreeMatchResult::WhitelistMatch;
+        } else {
+          result = ShadowTreeMatchResult::Found;
+        }
         return shadow_ptr;
       }
     } else {
