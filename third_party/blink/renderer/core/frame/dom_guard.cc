@@ -712,7 +712,7 @@ bool DOMGuard::matchesPropertyWhitelistInShadowTree(Element *element, Element *s
       const CSSValue* new_value = css_property_values_[count];
 
       if (slow_path) {
-        AtomicString shadow_attribute_name = "dtt-" + property_class.GetPropertyNameString();
+        AtomicString shadow_attribute_name = "dtt-s-" + property_class.GetPropertyNameString();
         if (propertyEquals(element, property_class, child_element->getAttribute(shadow_attribute_name), new_value, element->GetDocument().ElementSheet().Contents()->ParserContext())) {
           is_css_property_modified_[count] = false;
           modified_property_count_ -= 1;
@@ -977,7 +977,7 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
     for (CSSPropertyID property_id : css_property_ids_) {
       if (is_css_property_modified_[count]) {
         const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
-        AtomicString shadow_attribute_name = "dtt-" + property.GetPropertyNameString();
+        AtomicString shadow_attribute_name = "dtt-s-" + property.GetPropertyNameString();
         const CSSValue* new_css_value = ComputedStyleUtils::ComputedPropertyValue(property, *style);
         shadow_ptr->setAttribute(shadow_attribute_name, mergeShadowProperty(shadow_ptr, property, shadow_ptr->getAttribute(shadow_attribute_name), new_css_value, element->GetDocument().ElementSheet().Contents()->ParserContext()));
       }
@@ -1032,7 +1032,7 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
             continue;
           }
         }
-        AtomicString shadow_attribute_name = "dtt-" + property.GetPropertyNameString();
+        AtomicString shadow_attribute_name = "dtt-s-" + property.GetPropertyNameString();
         allowed &= propertyEquals(element, property, shadow_ptr->getAttribute(shadow_attribute_name), new_value, element->GetDocument().ElementSheet().Contents()->ParserContext());
         if (!allowed) {
           LOG(INFO) << "SetStyle rejected, match_result = " << match_result << ", property = " << property.GetPropertyNameString().Utf8() << ", value = " << (new_value ? new_value->CssText().Utf8() : "") << ", allowed_values = " << shadow_ptr->getAttribute(shadow_attribute_name).Utf8();
@@ -1052,7 +1052,7 @@ void DOMGuard::WillSetStyle(Element* element, const ComputedStyle* style, bool& 
         for (CSSPropertyID property_id : css_property_ids_) {
           if (is_css_property_modified_[count]) {
             const CSSProperty& property = CSSProperty::Get(ResolveCSSPropertyID(property_id));
-            AtomicString shadow_attribute_name = "dtt-" + property.GetPropertyNameString();
+            AtomicString shadow_attribute_name = "dtt-s-" + property.GetPropertyNameString();
             const CSSValue* new_value = ComputedStyleUtils::ComputedPropertyValue(property, *style);
             LOG(INFO) << "SetStyle rejected, match_result = " << match_result << ", property = " << property.GetPropertyNameString().Utf8() << ", value = " << (new_value ? new_value->CssText().Utf8() : "");
           }

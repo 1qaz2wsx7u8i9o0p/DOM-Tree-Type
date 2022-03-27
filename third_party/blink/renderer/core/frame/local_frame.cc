@@ -3441,7 +3441,7 @@ void LocalFrame::CalculateStyle(Node *node) {
     StyleResolverState state(node->GetDocument(), *element, ComputedStyle::Create().get(), ComputedStyle::Create().get());
     state.SetStyle(ComputedStyle::Create());
     for (const Attribute& attribute : element->Attributes()) {
-      if (attribute.GetName().LocalName().StartsWith("dtt-style-")) {
+      if (attribute.GetName().LocalName().StartsWith("dtt-s-")) {
         bool is_escaped_character = false;
         StringBuilder unescaped_current_part_builder;
         AtomicString current_value = attribute.Value();
@@ -3459,7 +3459,7 @@ void LocalFrame::CalculateStyle(Node *node) {
             }
           }
         }
-        CSSPropertyID property_id = CssPropertyID(node->GetExecutionContext(), attribute.GetName().LocalName().GetString().Substring(15));
+        CSSPropertyID property_id = CssPropertyID(node->GetExecutionContext(), attribute.GetName().LocalName().GetString().Substring(6));
         const CSSValue *css_value = CSSParser::ParseSingleValue(property_id, unescaped_current_part_builder.ToString(), element->GetDocument().ElementSheet().Contents()->ParserContext());
         if (css_value) {
           StyleBuilder::ApplyProperty(CSSPropertyName(property_id), state, ScopedCSSValue(*css_value, &element->GetDocument()));
