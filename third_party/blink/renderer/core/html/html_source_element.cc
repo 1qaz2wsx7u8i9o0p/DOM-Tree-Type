@@ -107,16 +107,18 @@ Node::InsertionNotificationRequest HTMLSourceElement::InsertedInto(
 }
 
 void HTMLSourceElement::RemovedFrom(ContainerNode& removal_root) {
-  Element* parent = parentElement();
-  bool was_removed_from_parent = !parent;
-  if (was_removed_from_parent)
-    parent = DynamicTo<Element>(&removal_root);
-  if (auto* media = DynamicTo<HTMLMediaElement>(parent))
-    media->SourceWasRemoved(this);
-  if (auto* picture = DynamicTo<HTMLPictureElement>(parent)) {
-    RemoveMediaQueryListListener();
+  if (isConnected()) {
+    Element* parent = parentElement();
+    bool was_removed_from_parent = !parent;
     if (was_removed_from_parent)
-      picture->SourceOrMediaChanged();
+      parent = DynamicTo<Element>(&removal_root);
+    if (auto* media = DynamicTo<HTMLMediaElement>(parent))
+      media->SourceWasRemoved(this);
+    if (auto* picture = DynamicTo<HTMLPictureElement>(parent)) {
+      RemoveMediaQueryListListener();
+      if (was_removed_from_parent)
+        picture->SourceOrMediaChanged();
+    }
   }
   HTMLElement::RemovedFrom(removal_root);
 }
