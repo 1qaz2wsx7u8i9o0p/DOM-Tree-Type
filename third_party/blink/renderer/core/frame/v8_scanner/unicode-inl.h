@@ -6,7 +6,6 @@
 #define V8_STRINGS_UNICODE_INL_H_
 
 #include "third_party/blink/renderer/core/frame/v8_scanner/unicode.h"
-// #include "src/utils/utils.h"
 
 namespace v8_scanner {
 namespace unibrow {

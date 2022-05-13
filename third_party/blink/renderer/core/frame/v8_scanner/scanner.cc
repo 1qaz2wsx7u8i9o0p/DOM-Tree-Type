@@ -10,7 +10,6 @@
 
 #include <cmath>
 
-#include "third_party/blink/renderer/core/frame/v8_scanner/utils.h"
 #include "third_party/blink/renderer/core/frame/v8_scanner/scanner-inl.h"
 
 namespace v8_scanner {
